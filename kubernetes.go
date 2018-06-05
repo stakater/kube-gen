@@ -1,6 +1,8 @@
 package kubegen
 
 import (
+	"os"
+
 	kclient "k8s.io/client-go/kubernetes"
 	kapi_unversioned "k8s.io/client-go/pkg/api"
 	kapi "k8s.io/client-go/pkg/api/v1"
@@ -10,21 +12,54 @@ import (
 	kcmd "k8s.io/client-go/tools/clientcmd"
 )
 
+// getClient returns a k8s clientset to the request from inside of cluster
+func getClient() (*kclient.Clientset, error) {
+	config, err := krest.InClusterConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	clientset, err := kclient.NewForConfig(config)
+	if err != nil {
+		return nil, err
+	}
+
+	return clientset, nil
+}
+
+func buildOutOfClusterConfig() (*krest.Config, error) {
+	kubeconfigPath := os.Getenv("KUBECONFIG")
+	if kubeconfigPath == "" {
+		kubeconfigPath = os.Getenv("HOME") + "/.kube/config"
+	}
+	return kcmd.BuildConfigFromFlags("", kubeconfigPath)
+}
+
+// getClientOutOfCluster returns a k8s clientset to the request from outside of cluster
+func getClientOutOfCluster() (*kclient.Clientset, error) {
+	config, err := buildOutOfClusterConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	clientset, err := kclient.NewForConfig(config)
+
+	return clientset, err
+}
+
 // Initializes a new Kubernetes API Client
 func newKubeClient(c Config) (*kclient.Clientset, error) {
 	var config *krest.Config
-	var err error
 	if c.Host == "" {
-		// use the current context in kubeconfig
-		config, err = kcmd.BuildConfigFromFlags("", c.Kubeconfig)
+		_, err := krest.InClusterConfig()
 		if err != nil {
-			return nil, err
+			return getClientOutOfCluster()
 		}
-	} else {
-		config = &krest.Config{
-			Host:          c.Host,
-			ContentConfig: krest.ContentConfig{GroupVersion: &kapi.SchemeGroupVersion},
-		}
+		return getClient()
+	}
+	config = &krest.Config{
+		Host:          c.Host,
+		ContentConfig: krest.ContentConfig{GroupVersion: &kapi.SchemeGroupVersion},
 	}
 	return kclient.NewForConfig(config)
 }
