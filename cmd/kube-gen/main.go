@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	kubegen "github.com/kylemcc/kube-gen"
+	kubegen "github.com/stakater/kube-gen"
 )
 
 type stringSlice []string
