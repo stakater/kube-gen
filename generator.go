@@ -239,7 +239,6 @@ func (g *generator) writeFile(content []byte) error {
 	if _, err := tmp.Write(content); err != nil {
 		return fmt.Errorf("error writing temp file: %v", err)
 	}
-	tmp.Close()
 
 	var (
 		oldContent []byte
