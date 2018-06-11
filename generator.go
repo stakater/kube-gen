@@ -130,10 +130,14 @@ func (g *generator) execute() error {
 	if err := g.runCmd(g.Config.PreCmd); err != nil {
 		return err
 	}
-	if err := g.writeFile(content); err != nil {
+
+	if runPostCmd, err := g.writeFile(content); err != nil {
 		return err
+	} else if runPostCmd {
+		return g.runCmd(g.Config.PostCmd)
 	}
-	return g.runCmd(g.Config.PostCmd)
+
+	return nil
 }
 
 func (g *generator) watchEvents() error {
@@ -220,10 +224,10 @@ func (g *generator) watchEvents() error {
 	return nil
 }
 
-func (g *generator) writeFile(content []byte) error {
+func (g *generator) writeFile(content []byte) (bool, error) {
 	if g.Config.Output == "" {
 		os.Stdout.Write(content)
-		return nil
+		return true, nil
 	}
 
 	// write to a temp file first so we can copy it into place with a single atomic operation
@@ -233,11 +237,11 @@ func (g *generator) writeFile(content []byte) error {
 		os.Remove(tmp.Name())
 	}()
 	if err != nil {
-		return fmt.Errorf("error creating temp file: %v", err)
+		return true, fmt.Errorf("error creating temp file: %v", err)
 	}
 
 	if _, err := tmp.Write(content); err != nil {
-		return fmt.Errorf("error writing temp file: %v", err)
+		return true, fmt.Errorf("error writing temp file: %v", err)
 	}
 
 	var (
@@ -248,10 +252,10 @@ func (g *generator) writeFile(content []byte) error {
 		exists = true
 		// set permissions and ownership on new file
 		if err := setFileModeAndOwnership(tmp, fi); err != nil {
-			return err
+			return true, err
 		}
 		if oldContent, err = ioutil.ReadFile(g.Config.Output); err != nil {
-			return fmt.Errorf("error comparing old version: %v", err)
+			return true, fmt.Errorf("error comparing old version: %v", err)
 		}
 	}
 
@@ -259,16 +263,21 @@ func (g *generator) writeFile(content []byte) error {
 		// Always overwrite in watch mode - doesn't make sense
 		// to watch and not overwrite
 		if exists && !g.Config.Watch && !g.Config.Overwrite {
-			return fmt.Errorf("output file already exists")
+			return true, fmt.Errorf("output file already exists")
 		}
 
 		if err = moveFile(tmp.Name(), g.Config.Output); err != nil {
-			return fmt.Errorf("error creating output file: %v", err)
+			return true, fmt.Errorf("error creating output file: %v", err)
 		}
 		log.Printf("output file [%s] created\n", g.Config.Output)
 	}
 
-	return nil
+	if exists {
+		return false, nil
+	}
+
+	return true, nil
+
 }
 
 func (g *generator) runCmd(cs string) error {
