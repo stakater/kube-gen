@@ -270,6 +270,8 @@ func (g *generator) writeFile(content []byte) (bool, error) {
 			return true, fmt.Errorf("error creating output file: %v", err)
 		}
 		log.Printf("output file [%s] created\n", g.Config.Output)
+		// File was recreated / created so we should run postCmd
+		return true, nil
 	}
 
 	if exists {
