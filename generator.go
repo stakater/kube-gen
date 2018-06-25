@@ -3,6 +3,7 @@ package kubegen
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"os"
@@ -289,14 +290,35 @@ func (g *generator) runCmd(cs string) error {
 
 	log.Printf("running command [%v]\n", cs)
 	cmd := exec.Command(SHELL_EXE, SHELL_ARG, cs)
-	out, err := cmd.CombinedOutput()
+
+	stdoutCmd, _ := cmd.StdoutPipe()
+	stderrCmd, _ := cmd.StderrPipe()
+
+	err := cmd.Start()
 	if err != nil {
 		return fmt.Errorf("error running command: %v", err)
 	}
-	if g.Config.LogCmdOutput {
-		log.Printf("%s: %s\n", cs, out)
-	}
+	go captureCmdOutput(os.Stdout, stdoutCmd)
+	go captureCmdOutput(os.Stderr, stderrCmd)
+
 	return nil
+}
+
+func captureCmdOutput(target io.Writer, source io.Reader) {
+	buf := make([]byte, 1024, 1024)
+	for {
+		n, err := source.Read(buf[:])
+		if n > 0 {
+			d := buf[:n]
+			_, err := target.Write(d)
+			if err != nil {
+				return
+			}
+		}
+		if err != nil {
+			return
+		}
+	}
 }
 
 func (g *generator) validateConfig() error {
