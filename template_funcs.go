@@ -185,22 +185,22 @@ func anyPodReady(pods []kapi.Pod) bool {
 	return false
 }
 
-func distinctPodsByOwner(pods []kapi.Pod) []kapi.Pod {
-	dPods := []kapi.Pod{}
+func distinctPodsByOwner(pods []interface{}) []interface{} {
+	dPods := make([]interface{}, 0)
 	for _, p := range pods {
-		if !podWithOwnerExists(dPods, p) {
+		if !podWithOwnerExists(dPods, p.(kapi.Pod)) {
 			dPods = append(dPods, p)
 		}
 	}
 	return dPods
 }
 
-func podWithOwnerExists(pods []kapi.Pod, pod kapi.Pod) bool {
+func podWithOwnerExists(pods []interface{}, pod kapi.Pod) bool {
 	for _, p := range pods {
-		for _, owner := range p.ObjectMeta.OwnerReferences {
+		for _, owner := range p.(kapi.Pod).ObjectMeta.OwnerReferences {
 			for _, pOwner := range pod.ObjectMeta.OwnerReferences {
 				// Namespace need to be same as well since owner with same name can exist in different namespaces
-				if owner.Name == pOwner.Name && p.Namespace == pod.Namespace {
+				if owner.Name == pOwner.Name && p.(kapi.Pod).Namespace == pod.Namespace {
 					return true
 				}
 			}
