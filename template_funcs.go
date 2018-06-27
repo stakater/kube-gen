@@ -188,14 +188,14 @@ func anyPodReady(pods []kapi.Pod) bool {
 func distinctPodsByOwner(pods []kapi.Pod) []kapi.Pod {
 	dPods := []kapi.Pod{}
 	for _, p := range pods {
-		if !podExists(dPods, p) {
+		if !podWithOwnerExists(dPods, p) {
 			dPods = append(dPods, p)
 		}
 	}
 	return dPods
 }
 
-func podExists(pods []kapi.Pod, pod kapi.Pod) bool {
+func podWithOwnerExists(pods []kapi.Pod, pod kapi.Pod) bool {
 	for _, p := range pods {
 		for _, owner := range p.ObjectMeta.OwnerReferences {
 			for _, pOwner := range pod.ObjectMeta.OwnerReferences {
