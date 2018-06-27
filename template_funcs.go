@@ -15,48 +15,49 @@ import (
 )
 
 var Funcs = template.FuncMap{
-	"allPodsReady":  allPodsReady,
-	"anyPodReady":   anyPodReady,
-	"closest":       arrayClosest,
-	"coalesce":      coalesce,
-	"combine":       combine,
-	"dir":           dirList,
-	"exists":        exists,
-	"first":         first,
-	"groupBy":       groupBy,
-	"groupByKeys":   groupByKeys,
-	"groupByMulti":  groupByMulti,
-	"hasPrefix":     strings.HasPrefix,
-	"hasSuffix":     strings.HasSuffix,
-	"hasField":      hasField,
-	"intersect":     intersect,
-	"isPodReady":    isPodReady,
-	"isValidJson":   isValidJson,
-	"json":          marshalJson,
-	"pathJoin":      filepath.Join,
-	"keys":          keys,
-	"last":          last,
-	"dict":          dict,
-	"mapContains":   mapContains,
-	"parseBool":     strconv.ParseBool,
-	"parseJson":     unmarshalJson,
-	"parseJsonSafe": unmarshalJsonSafe,
-	"readyPods":     readyPods,
-	"replace":       strings.Replace,
-	"shell":         execShell,
-	"split":         strings.Split,
-	"splitN":        strings.SplitN,
-	"strContains":   strings.Contains,
-	"trim":          strings.TrimSpace,
-	"trimPrefix":    strings.TrimPrefix,
-	"trimSuffix":    strings.TrimSuffix,
-	"values":        values,
-	"when":          when,
-	"where":         where,
-	"whereExist":    whereExist,
-	"whereNotExist": whereNotExist,
-	"whereAny":      whereAny,
-	"whereAll":      whereAll,
+	"distinctPodsByOwner": distinctPodsByOwner,
+	"allPodsReady":        allPodsReady,
+	"anyPodReady":         anyPodReady,
+	"closest":             arrayClosest,
+	"coalesce":            coalesce,
+	"combine":             combine,
+	"dir":                 dirList,
+	"exists":              exists,
+	"first":               first,
+	"groupBy":             groupBy,
+	"groupByKeys":         groupByKeys,
+	"groupByMulti":        groupByMulti,
+	"hasPrefix":           strings.HasPrefix,
+	"hasSuffix":           strings.HasSuffix,
+	"hasField":            hasField,
+	"intersect":           intersect,
+	"isPodReady":          isPodReady,
+	"isValidJson":         isValidJson,
+	"json":                marshalJson,
+	"pathJoin":            filepath.Join,
+	"keys":                keys,
+	"last":                last,
+	"dict":                dict,
+	"mapContains":         mapContains,
+	"parseBool":           strconv.ParseBool,
+	"parseJson":           unmarshalJson,
+	"parseJsonSafe":       unmarshalJsonSafe,
+	"readyPods":           readyPods,
+	"replace":             strings.Replace,
+	"shell":               execShell,
+	"split":               strings.Split,
+	"splitN":              strings.SplitN,
+	"strContains":         strings.Contains,
+	"trim":                strings.TrimSpace,
+	"trimPrefix":          strings.TrimPrefix,
+	"trimSuffix":          strings.TrimSuffix,
+	"values":              values,
+	"when":                when,
+	"where":               where,
+	"whereExist":          whereExist,
+	"whereNotExist":       whereNotExist,
+	"whereAny":            whereAny,
+	"whereAll":            whereAll,
 }
 
 // combine multiple slices into a single slice
@@ -179,6 +180,30 @@ func anyPodReady(pods []kapi.Pod) bool {
 	for _, p := range pods {
 		if isPodReady(p) {
 			return true
+		}
+	}
+	return false
+}
+
+func distinctPodsByOwner(pods []kapi.Pod) []kapi.Pod {
+	dPods := []kapi.Pod{}
+	for _, p := range pods {
+		if !podExists(dPods, p) {
+			dPods = append(dPods, p)
+		}
+	}
+	return dPods
+}
+
+func podExists(pods []kapi.Pod, pod kapi.Pod) bool {
+	for _, p := range pods {
+		for _, owner := range p.ObjectMeta.OwnerReferences {
+			for _, pOwner := range pod.ObjectMeta.OwnerReferences {
+				// Namespace need to be same as well since owner with same name can exist in different namespaces
+				if owner.Name == pOwner.Name && p.Namespace == pod.Namespace {
+					return true
+				}
+			}
 		}
 	}
 	return false
